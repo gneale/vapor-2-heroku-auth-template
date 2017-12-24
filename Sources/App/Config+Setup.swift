@@ -24,5 +24,8 @@ extension Config {
     private func setupPreparations() throws {
         preparations.append(User.self)
         preparations.append(AccessToken.self)
+        preparations.append(Post.self)
+        preparations.append(Tag.self)
+        preparations.append(Pivot<Post, Tag>.self)
     }
 }

@@ -1,6 +1,7 @@
 import Vapor
 import AuthProvider
 import Foundation
+import JSONAPISerializer
 
 extension Droplet {
     var tokenAuthed: RouteBuilder { return grouped(TokenAuthenticationMiddleware(User.self)) }
@@ -40,6 +41,30 @@ extension Droplet {
             guard let userId = try req.user().id else { throw Abort.badRequest }
             return try User.makeQuery().all().filter({ $0.id != userId }).makeJSON()
         }
+        
+        tokenAuthed.get("posts") { req in
+            let config = JSONAPIConfig(type: "posts")
+            let serializer = JSONAPISerializer(config: config)
+
+            let posts = try Post.all()
+            
+            return try serializer.serialize(posts)
+        }
+        tokenAuthed.get("users") { req in
+            let config = JSONAPIConfig(type: "posts")
+            let serializer = JSONAPISerializer(config: config)
+            
+            let users = try User.all()
+            
+            return try serializer.serialize(users)
+        }
+        
+        let postController = PostController()
+        tokenAuthed.resource("api/v1/posts", postController.self)
+        postController.addRoutes(self)
+        
+        let tagController = TagController()
+        tokenAuthed.resource("api/v1/tags", tagController.self)
     }
     
     func setupAuthRoutes() {
@@ -60,14 +85,16 @@ extension Droplet {
             
             let token = try AccessToken.generate(for: user)
             try token.save()
-            return try JSON(node: ["token" : token.token, "user" : try user.makeJSON()])
+            return try JSON(node: ["access_token" : token.token, "user" : try user.makeJSON()])
         }
         
-        passwordAuthed.post("login") { req in
+        passwordAuthed.post("token") { req in
             let user = try req.user()
             let token = try AccessToken.generate(for: user)
             try token.save()
-            return try JSON(node: ["token" : token.token, "user" : try user.makeJSON()])
+            return try JSON(node: ["access_token": token.token])
         }
+        
+
     }
 }
